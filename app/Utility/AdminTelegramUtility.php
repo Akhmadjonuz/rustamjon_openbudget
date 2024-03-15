@@ -444,7 +444,7 @@ class AdminTelegramUtility
             reply_markup: self::backAdminMenu($telegramService)
         );
 
-        return;
+        exit();
     }
 
 

@@ -35,7 +35,7 @@ return [
         'api_key' => env('TELEGRAM_BOT_TOKEN'),
         'admin_id' => env('ADMIN_ID'),
         'endpoint' => 'https://api.telegram.org/bot',
-        'username' => 'akhmadjon_demo_bot',
+        'username' => 'Ebudgetuzbot',
     ],
 
     'rucaptcha' => [

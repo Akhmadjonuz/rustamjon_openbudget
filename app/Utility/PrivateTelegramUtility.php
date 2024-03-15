@@ -109,11 +109,6 @@ class PrivateTelegramUtility
             AdminTelegramUtility::message($telegramService, self::$project, self::$user);
             return;
         }
-
-        $telegramService->sendMessage(
-            text: '❌ *Noma\'lum buyruq!*',
-            reply_markup: self::mainMenu($telegramService)
-        );
     }
 
 
@@ -398,9 +393,19 @@ class PrivateTelegramUtility
 
             DB::beginTransaction();
 
-            $referrer = User::where('chat_id', $ex[1])->first();
+            $telegramService->sendMessage(
+                text: 'Assalomu alaykum, ' . self::$user['full_name'] . '!',
+                reply_markup: self::mainMenu($telegramService)
+            );
 
-            if ($referrer) {
+            $referrer = User::where('chat_id', $ex[1])->first();
+            $usr = User::where('chat_id', $telegramService->getUserId())->first();
+
+            if ($referrer && $usr && is_null($usr->referrer_id)) {
+                // update referrer id
+                $usr->referrer_id = $referrer->id;
+                $usr->save();
+
                 $referrer->increment('balance', self::$project['per_referral_amount']);
                 $telegramService->sendMessage(
                     chat_id: $referrer->chat_id,
