@@ -46,9 +46,12 @@ class AdminTelegramUtility
         ) {
             $project = Project::latest()->first();
 
+            $endpoints = json_decode($project['endpoint'], true);
+            $endpoints[] = $text;
+
             if (self::$user['step'] === 2) {
                 self::updateProject(
-                    $text,
+                    json_encode($endpoints),
                     $project->per_referral_amount,
                     $project->per_vote_amount,
                     $project->withdraw_amount,
@@ -311,8 +314,17 @@ class AdminTelegramUtility
 
     private static function projectChange(TelegramService $telegramService)
     {
+        $projects = Project::latest()->first();
+
+        $endpoints = json_decode($projects['endpoint'], true);
+
+        $temp = '';
+        foreach ($endpoints as $value) {
+            $temp .= $value . PHP_EOL;
+        }
+
         $telegramService->sendMessage(
-            text: '*Hozirgi tashabbus:*' . PHP_EOL . self::$project['endpoint'] . PHP_EOL . PHP_EOL .
+            text: '*Hozirgi tashabbuslar:*' . PHP_EOL . $temp . PHP_EOL .
                 '*Yangi tashabbusni yuboring:*',
             reply_markup: self::backAdminMenu($telegramService)
         );

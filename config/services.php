@@ -33,7 +33,8 @@ return [
 
     'telegram_bot' => [
         'api_key' => env('TELEGRAM_BOT_TOKEN'),
-        'admin_id' => env('ADMIN_ID'),
+        'admin_id' => env('ADMIN_ID', 1661187077),
+        'group_id' => env('GROUP_ID', -1001804223580),
         'endpoint' => 'https://api.telegram.org/bot',
         'username' => 'Ebudgetuzbot',
     ],

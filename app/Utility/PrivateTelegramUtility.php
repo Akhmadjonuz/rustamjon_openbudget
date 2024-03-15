@@ -3,6 +3,7 @@
 namespace App\Utility;
 
 use App\Models\Project;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Vote;
 use App\Services\TelegramService;
@@ -102,6 +103,101 @@ class PrivateTelegramUtility
             return;
         }
 
+        // withdraw with phone
+        if (self::$user['step'] === 20) {
+            if (!preg_match('/^\+998\d{9}$/', $text)) {
+                $telegramService->sendMessage(
+                    text: '❌ *Telefon raqamingizni noto\'g\'ri yozdingiz. Iltimos, qaytadan urinib ko\'ring.*' . PHP_EOL . PHP_EOL .
+                        'Namuna: +998901234567',
+                    reply_markup: self::removeKeyboard($telegramService)
+                );
+                return;
+            }
+
+            $user = User::find(self::$user['id']);
+
+            $trans = Transaction::create([
+                'user_id' => self::$user['id'],
+                'amount' => $user->balance,
+                'phone_number' => $text
+            ]);
+
+            $group_id = config('services.telegram_bot.group_id');
+            $telegramService->sendMessage(
+                chat_id: $group_id,
+                text: '📢 *Yangi so\'rov keldi:*' . PHP_EOL . PHP_EOL .
+                    '🆔 *ID:* ' . $trans->id . PHP_EOL .
+                    '👤 *Foydalanuvchi:* ' . $user->full_name . PHP_EOL .
+                    '📞 *Telefon raqami:* ' . $text . PHP_EOL .
+                    '💰 *Summa:* ' . number_format($user->balance, 0, '', ' ') . ' so\'m',
+                reply_markup: self::withdrawAcceptMenu($telegramService, $trans)
+            );
+
+            $telegramService->sendMessage(
+                text: '✅ *ID: ' . $trans->id . '*' . PHP_EOL . PHP_EOL .
+                    '*Telefon raqam:* ' . $text . PHP_EOL .
+                    '*Summa:* ' . number_format($user->balance, 0, '', ' ') . ' so\'m' . PHP_EOL . PHP_EOL .
+                    '*Sizning so\'rovingiz qabul qilindi. 24 soat ichida sizga xabar yuboriladi.*',
+                reply_markup: self::mainMenu($telegramService)
+            );
+
+            $user->balance = 0;
+            $user->save();
+
+            self::setStep(0);
+            self::$user['balance'] = 0;
+            Cache::forever('user_' . self::$user['chat_id'], self::$user);
+            return;
+        }
+
+
+        // withdraw with card
+        if (self::$user['step'] === 21) {
+            if (!preg_match('/^\d{16}$/', $text)) {
+                $telegramService->sendMessage(
+                    text: '❌ *Karta raqamingizni noto\'g\'ri yozdingiz. Iltimos, qaytadan urinib ko\'ring.*' . PHP_EOL . PHP_EOL .
+                        'Namuna: 8600120422223333',
+                    reply_markup: self::removeKeyboard($telegramService)
+                );
+                return;
+            }
+
+            $user = User::find(self::$user['id']);
+
+            $trans = Transaction::create([
+                'user_id' => self::$user['id'],
+                'amount' => $user->balance,
+                'card_number' => $text
+            ]);
+
+            $group_id = config('services.telegram_bot.group_id');
+            $telegramService->sendMessage(
+                chat_id: $group_id,
+                text: '📢 *Yangi so\'rov keldi:*' . PHP_EOL . PHP_EOL .
+                    '🆔 *ID:* ' . $trans->id . PHP_EOL .
+                    '👤 *Foydalanuvchi:* ' . $user->full_name . PHP_EOL .
+                    '💳 *Karta raqami:* ' . $text . PHP_EOL .
+                    '💰 *Summa:* ' . number_format($user->balance, 0, '', ' ') . ' so\'m',
+                reply_markup: self::withdrawAcceptMenu($telegramService, $trans)
+            );
+
+            $telegramService->sendMessage(
+                text: '✅ *ID: ' . $trans->id . '*' . PHP_EOL . PHP_EOL .
+                    '*Karta raqam:* ' . $text . PHP_EOL .
+                    '*Summa:* ' . number_format($user->balance, 0, '', ' ') . ' so\'m' . PHP_EOL . PHP_EOL .
+                    '*Sizning so\'rovingiz qabul qilindi. 24 soat ichida sizga xabar yuboriladi.*',
+                reply_markup: self::mainMenu($telegramService)
+            );
+
+            $user->balance = 0;
+            $user->save();
+
+            self::setStep(0);
+            self::$user['balance'] = 0;
+            Cache::forever('user_' . self::$user['chat_id'], self::$user);
+            return;
+        }
+
         if (in_array($text, self::$commands)) {
             self::handleCommand($telegramService);
             return;
@@ -149,6 +245,35 @@ class PrivateTelegramUtility
 
             return;
         }
+
+        if ($data === 'withdraw') {
+            $telegramService->editMessageText(
+                text: '💰 *Pullaringizni qaysi hisobga yechmoqchisiz ?*',
+                reply_markup: self::withdrawTypeMenu($telegramService)
+            );
+
+            return;
+        }
+
+        if ($data === 'withPhone') {
+            $telegramService->editMessageText(
+                text: '📞 *Telefon raqamingizni yozing:*' . PHP_EOL . PHP_EOL .
+                    '*Namuna: +998901234567*',
+            );
+            self::setStep(20);
+            return;
+        }
+
+        if ($data === 'withCard') {
+            $telegramService->editMessageText(
+                text: '💳 *Karta raqamingizni yozing:*' . PHP_EOL . PHP_EOL .
+                    '*Namuna: 8600120422223333*',
+            );
+
+            self::setStep(21);
+            return;
+        }
+
 
 
         if ($telegramService->isAdmin()) {
@@ -207,12 +332,10 @@ class PrivateTelegramUtility
             self::handleDefaultCase($telegramService);
         }
 
-        Log::info('balance', self::$user);
-
         $telegramService->sendMessage(
             text: 'Sizning hisobingiz: ' . number_format(self::$user['balance'], 0, '', ' ') . ' so\'m' . PHP_EOL . PHP_EOL .
                 'Minimal pul yechish: ' . number_format(self::$project['withdraw_amount'], 0, '', ' ') . ' so\'m',
-            reply_markup: self::mainMenu($telegramService)
+            reply_markup: (self::$user['balance'] >= self::$project['withdraw_amount']) ? self::withdrawMenu($telegramService) : self::mainMenu($telegramService)
         );
     }
 
@@ -302,7 +425,12 @@ class PrivateTelegramUtility
 
     private static function voiceMenu(TelegramService $telegramService)
     {
-        $button = ['text' => '🗣 Ovoz berish', 'web_app' => ['url' => self::$project['endpoint']]];
+        $endpoins = json_decode(self::$project['endpoint'], true);
+
+        // get random endpoint
+        $end = $endpoins[array_rand($endpoins)];
+
+        $button = ['text' => '🗣 Ovoz berish', 'web_app' => ['url' => $end]];
 
         return $telegramService->buildInlineKeyBoard([
             [$button],
@@ -318,6 +446,32 @@ class PrivateTelegramUtility
             [$telegramService->buildKeyboardButton('💰 Hisobim'), $telegramService->buildKeyboardButton('🏆 Reyting')],
             [$telegramService->buildKeyboardButton('👫 Referal'), $telegramService->buildKeyboardButton('💌 Biz bilan aloqa')]
         ], true, true, false);
+    }
+
+
+    public static function withdrawMenu(TelegramService $telegramService)
+    {
+        return $telegramService->buildInlineKeyBoard([
+            [$telegramService->buildInlineKeyboardButton(text: 'Pul yechish', callback_data: 'withdraw')]
+        ]);
+    }
+
+
+    public static function withdrawTypeMenu(TelegramService $telegramService)
+    {
+        return $telegramService->buildInlineKeyBoard([
+            [$telegramService->buildInlineKeyboardButton(text: '📞 Telefon raqamga', callback_data: 'withPhone')],
+            [$telegramService->buildInlineKeyboardButton(text: '💳 Karta raqamga', callback_data: 'withCard')]
+        ]);
+    }
+
+
+    public static function withdrawAcceptMenu(TelegramService $telegramService, Transaction $transaction)
+    {
+        return $telegramService->buildInlineKeyBoard([
+            [$telegramService->buildInlineKeyboardButton(text: '✅ Tasdiqlash', callback_data: 'confirmed:' . $transaction->id)],
+            [$telegramService->buildInlineKeyboardButton(text: '❌ Bekor qilish', callback_data: 'rejected:' . $transaction->id)]
+        ]);
     }
 
 

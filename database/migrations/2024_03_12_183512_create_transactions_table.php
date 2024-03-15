@@ -13,6 +13,16 @@ return new class extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->float('amount');
+            $table->string('card_number')->nullable();
+            $table->string('phone_number')->nullable();
+            $table->string('status')->default('pending');
+
+            $table->foreign('user_id')
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade');
             $table->timestamps();
         });
     }

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('projects', function (Blueprint $table) {
             $table->id();
-            $table->string('endpoint');
+            $table->string('endpoint')->default('[]');
             $table->float('per_referral_amount')->default(0);
             $table->float('per_vote_amount')->default(0);
             $table->string('card_number', 16)->nullable();
