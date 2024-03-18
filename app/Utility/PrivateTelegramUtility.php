@@ -430,10 +430,11 @@ class PrivateTelegramUtility
         // get random endpoint
         $end = $endpoins[array_rand($endpoins)];
 
-        $button = ['text' => '🗣 Ovoz berish', 'web_app' => ['url' => $end]];
+        // $button = ['text' => '🗣 Ovoz berish', 'web_app' => ['url' => $end]];
 
         return $telegramService->buildInlineKeyBoard([
-            [$button],
+            // [$button],
+            [$telegramService->buildInlineKeyboardButton(text: '🗣 Ovoz berish', url: $end)],
             [$telegramService->buildInlineKeyboardButton(text: '✅ Ovoz berdim', callback_data: 'checkVoice:' . self::$user['phone_number'])]
         ]);
     }

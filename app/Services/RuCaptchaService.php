@@ -28,9 +28,6 @@ class RuCaptchaService
             'languagePool' => 'en',
         ]);
 
-        Log::info('Captcha task request:');
-        Log::info('Captcha task request: ' .  $base64Image);
-
         if ($response->successful()) {
             if ($response->json('errorId') === 0) {
                 recheck:
